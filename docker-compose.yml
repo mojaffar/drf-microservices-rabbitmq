@@ -1,0 +1,50 @@
+version: '3.3'
+
+services:
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"  # RabbitMQ default port
+      - "15673:15672"  # RabbitMQ management interface (changed from 15672)
+    environment:
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
+
+  order_service:
+    build: 
+      context: ./order_service
+      dockerfile: Dockerfile
+    container_name: order_service
+    ports:
+      - "8000:8000"
+    environment:
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USERNAME=guest
+      - RABBITMQ_PASSWORD=guest
+      - DJANGO_SETTINGS_MODULE=order_service.settings
+    depends_on:
+      - rabbitmq
+    volumes:
+      - ./order_service:/app
+    command: sh -c "python manage.py migrate && python manage.py runserver 0.0.0.0:8000"
+
+  notification_service:
+    build: 
+      context: ./notification_service
+      dockerfile: Dockerfile
+    container_name: notification_service
+    ports:
+      - "8001:8001"
+    environment:
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USERNAME=guest
+      - RABBITMQ_PASSWORD=guest
+      - DJANGO_SETTINGS_MODULE=notification_service.settings
+    depends_on:
+      - rabbitmq
+    volumes:
+      - ./notification_service:/app
+    command: sh -c "python manage.py migrate && python manage.py runserver 0.0.0.0:8001"
